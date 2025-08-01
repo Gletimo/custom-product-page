@@ -1,0 +1,1684 @@
+{% comment %}
+  This Shopify Liquid template creates a split-screen product page layout.
+  - On desktop screens, it displays product images in the left column and product details (title, price, variants, etc.) in the right column.
+  - On mobile screens, it responsively stacks the elements: the first image appears on top, followed by the product details, and then the remaining images are displayed below.
+  - The layout and styling of each element are highly customizable through the Shopify Theme Editor settings.
+{% endcomment %}
+
+{% assign ai_gen_id = block.id | replace: '_', '' | downcase %}
+
+{% style %}
+  /* Base styles for the main container */
+  .ai-product-split-{{ ai_gen_id }} {
+    display: flex; /* Mobile-first: A single column flexbox layout */
+    flex-direction: column;
+    width: 100%;
+  }
+
+  /* Wrappers for the first image and the remaining images */
+  .ai-product-split__first-image-wrapper-{{ ai_gen_id }},
+  .ai-product-split__remaining-images-wrapper-{{ ai_gen_id }} {
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+  
+  /* Individual product image styling */
+  .ai-product-split__image-{{ ai_gen_id }} {
+    width: 100%;
+    height: auto; /* Let height be determined by aspect ratio */
+    display: block;
+    {% if block.settings.image_aspect_ratio != 'fullscreen' %}
+      object-fit: cover;
+      aspect-ratio: {{ block.settings.image_aspect_ratio }};
+    {% endif %}
+  }
+
+  /* Placeholder for when no product image is available */
+  .ai-product-split__image-placeholder-{{ ai_gen_id }} {
+    width: 100%;
+    height: auto;
+    background-color: #f4f4f4;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    {% if block.settings.image_aspect_ratio != 'fullscreen' %}
+       aspect-ratio: {{ block.settings.image_aspect_ratio }};
+    {% else %}
+       min-height: 50vh; /* For fullscreen placeholder, give it a substantial height */
+    {% endif %}
+  }
+
+  .ai-product-split__image-placeholder-{{ ai_gen_id }} svg {
+    width: 100%;
+    height: 100%;
+    max-width: 300px;
+    max-height: 300px;
+  }
+
+  /* Styling for the content column (product details) */
+  .ai-product-split__content-column-{{ ai_gen_id }} {
+    padding: {{ block.settings.content_padding }}px;
+    display: flex;
+    flex-direction: column;
+    gap: {{ block.settings.element_spacing }}px;
+    text-align: {{ block.settings.content_alignment }};
+    background-color: {{ block.settings.content_background }};
+    box-sizing: border-box; /* Ensures padding is included in the element's total width */
+  }
+
+  /* Product Title */
+  .ai-product-split__title-{{ ai_gen_id }} {
+    font-family: {{ block.settings.title_font.family }}, {{ block.settings.title_font.fallback_families }};
+    font-weight: {{ block.settings.title_font.weight }};
+    font-style: {{ block.settings.title_font.style }};
+    font-size: {{ block.settings.title_size }}px;
+    color: {{ block.settings.title_color }};
+    margin: {{ block.settings.title_margin }}px 0;
+    padding: {{ block.settings.title_padding }}px;
+    border: {{ block.settings.title_border_width }}px solid {{ block.settings.title_border_color }};
+    border-radius: {{ block.settings.title_border_radius }}px;
+    {% unless block.settings.show_title %}display: none;{% endunless %}
+  }
+
+  /* Product Price */
+  .ai-product-split__price-{{ ai_gen_id }} {
+    font-family: {{ block.settings.price_font.family }}, {{ block.settings.price_font.fallback_families }};
+    font-weight: {{ block.settings.price_font.weight }};
+    font-style: {{ block.settings.price_font.style }};
+    font-size: {{ block.settings.price_size }}px;
+    color: {{ block.settings.price_color }};
+    margin: {{ block.settings.price_margin }}px 0;
+    padding: {{ block.settings.price_padding }}px;
+    border: {{ block.settings.price_border_width }}px solid {{ block.settings.price_border_color }};
+    border-radius: {{ block.settings.price_border_radius }}px;
+    {% unless block.settings.show_price %}display: none;{% endunless %}
+  }
+
+  /* Product Description */
+  .ai-product-split__description-{{ ai_gen_id }} {
+    font-family: {{ block.settings.description_font.family }}, {{ block.settings.description_font.fallback_families }};
+    font-weight: {{ block.settings.description_font.weight }};
+    font-style: {{ block.settings.description_font.style }};
+    font-size: {{ block.settings.description_size }}px;
+    color: {{ block.settings.description_color }};
+    margin: {{ block.settings.description_margin }}px 0;
+    padding: {{ block.settings.description_padding }}px;
+    border: {{ block.settings.description_border_width }}px solid {{ block.settings.description_border_color }};
+    border-radius: {{ block.settings.description_border_radius }}px;
+    {% unless block.settings.show_description %}display: none;{% endunless %}
+  }
+
+  /* Color and Size Variant Sections */
+  .ai-product-split__color-variants-{{ ai_gen_id }},
+  .ai-product-split__size-variants-{{ ai_gen_id }} {
+    margin: 0; /* Margin is controlled by parent gap */
+    padding: 0;
+  }
+
+  .ai-product-split__color-variants-{{ ai_gen_id }} {
+    margin: {{ block.settings.color_variants_margin }}px 0;
+    padding: {{ block.settings.color_variants_padding }}px;
+    border: {{ block.settings.color_variants_border_width }}px solid {{ block.settings.color_variants_border_color }};
+    border-radius: {{ block.settings.color_variants_border_radius }}px;
+    {% unless block.settings.show_color_variants %}display: none;{% endunless %}
+  }
+
+  .ai-product-split__size-variants-{{ ai_gen_id }} {
+    margin: {{ block.settings.size_variants_margin }}px 0;
+    padding: {{ block.settings.size_variants_padding }}px;
+    border: {{ block.settings.size_variants_border_width }}px solid {{ block.settings.size_variants_border_color }};
+    border-radius: {{ block.settings.size_variants_border_radius }}px;
+    {% unless block.settings.show_size_variants %}display: none;{% endunless %}
+  }
+  
+  /* Variant Labels (e.g., "Color:", "Size:") */
+  .ai-product-split__variant-label-{{ ai_gen_id }} {
+    font-family: {{ block.settings.variant_label_font.family }}, {{ block.settings.variant_label_font.fallback_families }};
+    font-weight: {{ block.settings.variant_label_font.weight }};
+    font-style: {{ block.settings.variant_label_font.style }};
+    font-size: {{ block.settings.variant_label_size }}px;
+    color: {{ block.settings.variant_label_color }};
+    margin-bottom: 8px;
+    display: block;
+  }
+
+  /* Dropdown styles for variants */
+  .ai-product-split__color-variant-select-{{ ai_gen_id }},
+  .ai-product-split__size-variant-select-{{ ai_gen_id }} {
+    width: 100%;
+    padding: 12px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+  }
+
+  .ai-product-split__color-variant-select-{{ ai_gen_id }} {
+    font-family: {{ block.settings.color_variant_font.family }}, {{ block.settings.color_variant_font.fallback_families }};
+    font-weight: {{ block.settings.color_variant_font.weight }};
+    font-style: {{ block.settings.color_variant_font.style }};
+    font-size: {{ block.settings.color_variant_size }}px;
+    color: {{ block.settings.color_variant_color }};
+    border-color: {{ block.settings.color_variant_border_color }};
+    border-radius: {{ block.settings.color_variant_border_radius }}px;
+    background-color: {{ block.settings.color_variant_background }};
+  }
+
+  .ai-product-split__size-variant-select-{{ ai_gen_id }} {
+    font-family: {{ block.settings.size_variant_font.family }}, {{ block.settings.size_variant_font.fallback_families }};
+    font-weight: {{ block.settings.size_variant_font.weight }};
+    font-style: {{ block.settings.size_variant_font.style }};
+    font-size: {{ block.settings.size_variant_size }}px;
+    color: {{ block.settings.size_variant_color }};
+    border-color: {{ block.settings.size_variant_border_color }};
+    border-radius: {{ block.settings.size_variant_border_radius }}px;
+    background-color: {{ block.settings.size_variant_background }};
+  }
+
+  /* Pill container styles for variants */
+  .ai-product-split__color-variant-pills-{{ ai_gen_id }},
+  .ai-product-split__size-variant-pills-{{ ai_gen_id }} {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  /* Individual pill styles */
+  .ai-product-split__color-variant-pill-{{ ai_gen_id }} {
+    padding: 8px 16px;
+    font-family: {{ block.settings.color_variant_font.family }}, {{ block.settings.color_variant_font.fallback_families }};
+    font-weight: {{ block.settings.color_variant_font.weight }};
+    font-style: {{ block.settings.color_variant_font.style }};
+    font-size: {{ block.settings.color_variant_size }}px;
+    color: {{ block.settings.color_variant_color }};
+    background-color: {{ block.settings.color_variant_background }};
+    border: 1px solid {{ block.settings.color_variant_border_color }};
+    border-radius: {{ block.settings.color_variant_border_radius }}px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+  }
+
+  .ai-product-split__color-variant-pill-{{ ai_gen_id }}:hover {
+    background-color: {{ block.settings.color_variant_hover_color }};
+    color: {{ block.settings.color_variant_hover_text_color }};
+  }
+
+  .ai-product-split__color-variant-pill-{{ ai_gen_id }}.selected {
+    background-color: {{ block.settings.color_variant_selected_color }};
+    color: {{ block.settings.color_variant_selected_text_color }};
+  }
+
+  .ai-product-split__size-variant-pill-{{ ai_gen_id }} {
+    padding: 12px 20px;
+    font-family: {{ block.settings.size_variant_font.family }}, {{ block.settings.size_variant_font.fallback_families }};
+    font-weight: {{ block.settings.size_variant_font.weight }};
+    font-style: {{ block.settings.size_variant_font.style }};
+    font-size: {{ block.settings.size_variant_size }}px;
+    color: {{ block.settings.size_variant_color }};
+    background-color: {{ block.settings.size_variant_background }};
+    border: 1px solid {{ block.settings.size_variant_border_color }};
+    border-radius: {{ block.settings.size_variant_border_radius }}px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    min-width: 50px;
+    text-align: center;
+  }
+
+  .ai-product-split__size-variant-pill-{{ ai_gen_id }}:hover {
+    background-color: {{ block.settings.size_variant_hover_color }};
+    color: {{ block.settings.size_variant_hover_text_color }};
+  }
+
+  .ai-product-split__size-variant-pill-{{ ai_gen_id }}.selected {
+    background-color: {{ block.settings.size_variant_selected_color }};
+    color: {{ block.settings.size_variant_selected_text_color }};
+  }
+
+  /* Quantity Selector */
+  .ai-product-split__quantity-{{ ai_gen_id }} {
+    margin: {{ block.settings.quantity_margin }}px 0;
+    padding: {{ block.settings.quantity_padding }}px;
+    border: {{ block.settings.quantity_border_width }}px solid {{ block.settings.quantity_border_color }};
+    border-radius: {{ block.settings.quantity_border_radius }}px;
+    {% unless block.settings.show_quantity %}display: none;{% endunless %}
+  }
+
+  .ai-product-split__quantity-label-{{ ai_gen_id }} {
+    font-family: {{ block.settings.quantity_label_font.family }}, {{ block.settings.quantity_label_font.fallback_families }};
+    font-weight: {{ block.settings.quantity_label_font.weight }};
+    font-style: {{ block.settings.quantity_label_font.style }};
+    font-size: {{ block.settings.quantity_label_size }}px;
+    color: {{ block.settings.quantity_label_color }};
+    margin-bottom: 8px;
+    display: block;
+  }
+
+  .ai-product-split__quantity-selector-{{ ai_gen_id }} {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    width: fit-content;
+    border: 1px solid {{ block.settings.quantity_input_border_color }};
+    border-radius: {{ block.settings.quantity_input_border_radius }}px;
+    overflow: hidden;
+  }
+
+  .ai-product-split__quantity-button-{{ ai_gen_id }} {
+    width: 40px;
+    height: 40px;
+    background-color: {{ block.settings.quantity_background }};
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: {{ block.settings.quantity_font.family }}, {{ block.settings.quantity_font.fallback_families }};
+    font-weight: {{ block.settings.quantity_font.weight }};
+    font-style: {{ block.settings.quantity_font.style }};
+    font-size: {{ block.settings.quantity_size }}px;
+    color: {{ block.settings.quantity_color }};
+    transition: background-color 0.3s ease;
+  }
+
+  .ai-product-split__quantity-button-{{ ai_gen_id }}:hover {
+    background-color: {{ block.settings.quantity_button_hover_color }};
+  }
+
+  .ai-product-split__quantity-button-{{ ai_gen_id }}:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  .ai-product-split__quantity-input-{{ ai_gen_id }} {
+    width: 60px;
+    height: 40px;
+    padding: 0;
+    font-family: {{ block.settings.quantity_font.family }}, {{ block.settings.quantity_font.fallback_families }};
+    font-weight: {{ block.settings.quantity_font.weight }};
+    font-style: {{ block.settings.quantity_font.style }};
+    font-size: {{ block.settings.quantity_size }}px;
+    color: {{ block.settings.quantity_color }};
+    border: none;
+    border-left: 1px solid {{ block.settings.quantity_input_border_color }};
+    border-right: 1px solid {{ block.settings.quantity_input_border_color }};
+    background-color: {{ block.settings.quantity_background }};
+    text-align: center;
+    outline: none;
+  }
+
+  /* Add to Cart Button */
+  .ai-product-split__add-to-cart-{{ ai_gen_id }} {
+    {% if block.settings.button_full_width %}width: 100%;{% endif %}
+    padding: {{ block.settings.button_padding }}px;
+    font-family: {{ block.settings.button_font.family }}, {{ block.settings.button_font.fallback_families }};
+    font-weight: {{ block.settings.button_font.weight }};
+    font-style: {{ block.settings.button_font.style }};
+    font-size: {{ block.settings.button_size }}px;
+    color: {{ block.settings.button_text_color }};
+    background-color: {{ block.settings.button_color }};
+    border: {{ block.settings.button_border_width }}px solid {{ block.settings.button_border_color }};
+    border-radius: {{ block.settings.button_border_radius }}px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    margin: {{ block.settings.button_margin }}px 0;
+    {% unless block.settings.show_add_to_cart %}display: none;{% endunless %}
+  }
+
+  .ai-product-split__add-to-cart-{{ ai_gen_id }}:hover {
+    background-color: {{ block.settings.button_hover_color }};
+    color: {{ block.settings.button_hover_text_color }};
+  }
+
+  /* Size Chart Link */
+  .ai-product-split__size-chart-{{ ai_gen_id }} {
+    font-family: {{ block.settings.size_chart_font.family }}, {{ block.settings.size_chart_font.fallback_families }};
+    font-weight: {{ block.settings.size_chart_font.weight }};
+    font-style: {{ block.settings.size_chart_font.style }};
+    font-size: {{ block.settings.size_chart_size }}px;
+    color: {{ block.settings.size_chart_color }};
+    text-decoration: none;
+    cursor: pointer;
+    transition: color 0.3s ease;
+    display: inline-block;
+    margin: {{ block.settings.size_chart_margin }}px 0;
+    {% unless block.settings.show_size_chart %}display: none;{% endunless %}
+  }
+
+  .ai-product-split__size-chart-{{ ai_gen_id }}:hover {
+    color: {{ block.settings.size_chart_hover_color }};
+  }
+
+  /* Additional Text Block */
+  .ai-product-split__text-block-{{ ai_gen_id }} {
+    font-family: {{ block.settings.text_block_font.family }}, {{ block.settings.text_block_font.fallback_families }};
+    font-weight: {{ block.settings.text_block_font.weight }};
+    font-style: {{ block.settings.text_block_font.style }};
+    font-size: {{ block.settings.text_block_size }}px;
+    color: {{ block.settings.text_block_color }};
+    margin: {{ block.settings.text_block_margin }}px 0;
+    padding: {{ block.settings.text_block_padding }}px;
+    border: {{ block.settings.text_block_border_width }}px solid {{ block.settings.text_block_border_color }};
+    border-radius: {{ block.settings.text_block_border_radius }}px;
+    background-color: {{ block.settings.text_block_background }};
+    {% unless block.settings.show_text_block %}display: none;{% endunless %}
+  }
+
+  /* Custom CSS from settings */
+  {{ block.settings.custom_css }}
+
+  /* Desktop and larger screens (769px and up) */
+  @media screen and (min-width: 769px) {
+    .ai-product-split-{{ ai_gen_id }} {
+      display: grid;
+      grid-template-columns: 1fr 1fr; /* Creates two equal-width columns */
+      min-height: 100vh;
+      gap: 0;
+    }
+
+    /* Place the first image in the first column, first row */
+    .ai-product-split__first-image-wrapper-{{ ai_gen_id }} {
+      grid-column: 1;
+    }
+
+    /* Place the content column in the second column and make it span all image rows */
+    .ai-product-split__content-column-{{ ai_gen_id }} {
+      grid-column: 2;
+      grid-row: 1 / -1; /* Span from the first to the last row line */
+      overflow-y: auto; /* Allow content to scroll if it's too long */
+    }
+
+    /* Place the remaining images in the first column, below the first image */
+    .ai-product-split__remaining-images-wrapper-{{ ai_gen_id }} {
+      grid-column: 1;
+    }
+  }
+
+  /* Mobile screen adjustments */
+  @media screen and (max-width: 768px) {
+    .ai-product-split__image-{{ ai_gen_id }},
+    .ai-product-split__image-placeholder-{{ ai_gen_id }} {
+      {% if block.settings.image_aspect_ratio != 'fullscreen' %}
+        aspect-ratio: 1; /* Default to a square aspect ratio on mobile for non-fullscreen */
+      {% endif %}
+    }
+  }
+{% endstyle %}
+
+<product-split-{{ ai_gen_id }} class="ai-product-split-{{ ai_gen_id }}" {{ block.shopify_attributes }}>
+  
+  <!-- First Image Wrapper -->
+  <div class="ai-product-split__first-image-wrapper-{{ ai_gen_id }}">
+    {% if product.images.first %}
+      <img
+        src="{{ product.images.first | image_url: width: 1000}}"
+        alt="{{ product.images.first.alt | escape }}"
+        class="ai-product-split__image-{{ ai_gen_id }}"
+        loading="lazy"
+        width="{{ product.images.first.width }}"
+        height="{{ product.images.first.height }}"
+      >
+    {% else %}
+      <div class="ai-product-split__image-placeholder-{{ ai_gen_id }}">
+        {{ 'product-1' | placeholder_svg_tag }}
+      </div>
+    {% endif %}
+  </div>
+
+  <!-- Content Column -->
+  <div class="ai-product-split__content-column-{{ ai_gen_id }}">
+    {% if block.settings.show_title %}
+      <h1 class="ai-product-split__title-{{ ai_gen_id }}">
+        {{ product.title | default: 'Product Title' }}
+      </h1>
+    {% endif %}
+
+    {% if block.settings.show_price %}
+      <div class="ai-product-split__price-{{ ai_gen_id }}">
+        {% if product.price %}
+          {{ product.price | money }}
+          {% if product.compare_at_price > product.price %}
+            <s>{{ product.compare_at_price | money }}</s>
+          {% endif %}
+        {% else %}
+          $99.00
+        {% endif %}
+      </div>
+    {% endif %}
+
+    {% if block.settings.show_description %}
+      <div class="ai-product-split__description-{{ ai_gen_id }}">
+        {{ product.description | default: 'Product description goes here.' }}
+      </div>
+    {% endif %}
+
+    {% if block.settings.show_color_variants and product.variants.size > 1 %}
+      {% for option in product.options_with_values %}
+        {% if option.name == 'Color' or option.name == 'Colour' %}
+          <div class="ai-product-split__color-variants-{{ ai_gen_id }}">
+            <label class="ai-product-split__variant-label-{{ ai_gen_id }}">{{ option.name }}:</label>
+            
+            {% if block.settings.color_variant_style == 'dropdown' %}
+              <select class="ai-product-split__color-variant-select-{{ ai_gen_id }}" data-option="{{ option.name }}">
+                {% for value in option.values %}
+                  <option value="{{ value }}">{{ value }}</option>
+                {% endfor %}
+              </select>
+            {% else %}
+              <div class="ai-product-split__color-variant-pills-{{ ai_gen_id }}">
+                {% for value in option.values %}
+                  <button
+                    class="ai-product-split__color-variant-pill-{{ ai_gen_id }}"
+                    data-option="{{ option.name }}"
+                    data-value="{{ value }}"
+                    type="button"
+                  >
+                    {{ value }}
+                  </button>
+                {% endfor %}
+              </div>
+            {% endif %}
+          </div>
+        {% endif %}
+      {% endfor %}
+    {% endif %}
+
+    {% if block.settings.show_size_variants and product.variants.size > 1 %}
+      {% for option in product.options_with_values %}
+        {% if option.name == 'Size' %}
+          <div class="ai-product-split__size-variants-{{ ai_gen_id }}">
+            <label class="ai-product-split__variant-label-{{ ai_gen_id }}">{{ option.name }}:</label>
+            
+            {% if block.settings.size_variant_style == 'dropdown' %}
+              <select class="ai-product-split__size-variant-select-{{ ai_gen_id }}" data-option="{{ option.name }}">
+                {% for value in option.values %}
+                  <option value="{{ value }}">{{ value }}</option>
+                {% endfor %}
+              </select>
+            {% else %}
+              <div class="ai-product-split__size-variant-pills-{{ ai_gen_id }}">
+                {% for value in option.values %}
+                  <button
+                    class="ai-product-split__size-variant-pill-{{ ai_gen_id }}"
+                    data-option="{{ option.name }}"
+                    data-value="{{ value }}"
+                    type="button"
+                  >
+                    {{ value }}
+                  </button>
+                {% endfor %}
+              </div>
+            {% endif %}
+          </div>
+        {% endif %}
+      {% endfor %}
+    {% endif %}
+
+    {% if block.settings.show_quantity %}
+      <div class="ai-product-split__quantity-{{ ai_gen_id }}">
+        <label class="ai-product-split__quantity-label-{{ ai_gen_id }}">Quantity:</label>
+        <div class="ai-product-split__quantity-selector-{{ ai_gen_id }}">
+          <button
+            type="button"
+            class="ai-product-split__quantity-button-{{ ai_gen_id }} ai-product-split__quantity-decrease-{{ ai_gen_id }}"
+            aria-label="Decrease quantity"
+          >
+            −
+          </button>
+          <input
+            type="number"
+            class="ai-product-split__quantity-input-{{ ai_gen_id }}"
+            value="1"
+            min="1"
+            readonly
+          >
+          <button
+            type="button"
+            class="ai-product-split__quantity-button-{{ ai_gen_id }} ai-product-split__quantity-increase-{{ ai_gen_id }}"
+            aria-label="Increase quantity"
+          >
+            +
+          </button>
+        </div>
+      </div>
+    {% endif %}
+
+    {% if block.settings.show_add_to_cart %}
+      <button class="ai-product-split__add-to-cart-{{ ai_gen_id }}" type="button">
+        {{ block.settings.button_text }}
+      </button>
+    {% endif %}
+
+    {% if block.settings.show_size_chart %}
+      <a
+        href="{{ block.settings.size_chart_url }}"
+        class="ai-product-split__size-chart-{{ ai_gen_id }}"
+        {% if block.settings.size_chart_url contains 'http' %}target="_blank"{% endif %}
+      >
+        {{ block.settings.size_chart_text }}
+      </a>
+    {% endif %}
+
+    {% if block.settings.show_text_block %}
+      <div class="ai-product-split__text-block-{{ ai_gen_id }}">
+        {{ block.settings.text_block_content }}
+      </div>
+    {% endif %}
+  </div>
+
+  <!-- Remaining Images Wrapper -->
+  <div class="ai-product-split__remaining-images-wrapper-{{ ai_gen_id }}">
+    {% if product.images.size > 1 %}
+      {% for image in product.images offset: 1 %}
+        <img
+          src="{{ image | image_url: width: 1000}}"
+          alt="{{ image.alt | escape }}"
+          class="ai-product-split__image-{{ ai_gen_id }}"
+          loading="lazy"
+          width="{{ image.width }}"
+          height="{{ image.height }}"
+        >
+      {% endfor %}
+    {% elsif product.images.size == 0 %}
+      <div class="ai-product-split__image-placeholder-{{ ai_gen_id }}">
+        {{ 'product-2' | placeholder_svg_tag }}
+      </div>
+      <div class="ai-product-split__image-placeholder-{{ ai_gen_id }}">
+        {{ 'product-3' | placeholder_svg_tag }}
+      </div>
+    {% endif %}
+  </div>
+
+</product-split-{{ ai_gen_id }}>
+
+<script>
+(function() {
+  /**
+   * Defines the custom element for the product split layout.
+   * Handles interactive elements like variant pills and the quantity selector.
+   */
+  class ProductSplit{{ ai_gen_id }} extends HTMLElement {
+    constructor() {
+      super();
+    }
+
+    connectedCallback() {
+      this.setupVariantPills();
+      this.setupQuantitySelector();
+      this.setupAddToCart();
+    }
+
+    /**
+     * Sets up event listeners for variant selection pills (color and size).
+     * When a pill is clicked, it becomes selected and deselects siblings.
+     */
+    setupVariantPills() {
+      const colorPills = this.querySelectorAll('.ai-product-split__color-variant-pill-{{ ai_gen_id }}');
+      const sizePills = this.querySelectorAll('.ai-product-split__size-variant-pill-{{ ai_gen_id }}');
+      
+      const setupPillGroup = (pills) => {
+        pills.forEach(pill => {
+          pill.addEventListener('click', () => {
+            const option = pill.dataset.option;
+            const siblings = this.querySelectorAll(`.ai-product-split__color-variant-pill-{{ ai_gen_id }}[data-option="${option}"], .ai-product-split__size-variant-pill-{{ ai_gen_id }}[data-option="${option}"]`);
+            siblings.forEach(sibling => {
+              sibling.classList.remove('selected');
+            });
+            pill.classList.add('selected');
+          });
+        });
+
+        // Pre-select the first pill in each group
+        const firstPills = {};
+        pills.forEach(pill => {
+          const option = pill.dataset.option;
+          if (!firstPills[option]) {
+            firstPills[option] = pill;
+            pill.classList.add('selected');
+          }
+        });
+      };
+
+      setupPillGroup(colorPills);
+      setupPillGroup(sizePills);
+    }
+
+    /**
+     * Sets up the functionality for the quantity selector (+/- buttons).
+     */
+    setupQuantitySelector() {
+      const quantityInput = this.querySelector('.ai-product-split__quantity-input-{{ ai_gen_id }}');
+      const decreaseBtn = this.querySelector('.ai-product-split__quantity-decrease-{{ ai_gen_id }}');
+      const increaseBtn = this.querySelector('.ai-product-split__quantity-increase-{{ ai_gen_id }}');
+
+      if (!quantityInput || !decreaseBtn || !increaseBtn) return;
+
+      const updateQuantity = (newValue) => {
+        const min = parseInt(quantityInput.min) || 1;
+        const max = parseInt(quantityInput.max) || 999;
+        
+        if (newValue >= min && newValue <= max) {
+          quantityInput.value = newValue;
+          decreaseBtn.disabled = newValue <= min;
+          increaseBtn.disabled = newValue >= max;
+        }
+      };
+
+      decreaseBtn.addEventListener('click', () => {
+        const currentValue = parseInt(quantityInput.value) || 1;
+        updateQuantity(currentValue - 1);
+      });
+
+      increaseBtn.addEventListener('click', () => {
+        const currentValue = parseInt(quantityInput.value) || 1;
+        updateQuantity(currentValue + 1);
+      });
+
+      updateQuantity(parseInt(quantityInput.value) || 1);
+    }
+
+    /**
+     * Sets up a placeholder event listener for the Add to Cart button.
+     */
+    setupAddToCart() {
+      const addToCartBtn = this.querySelector('.ai-product-split__add-to-cart-{{ ai_gen_id }}');
+      if (addToCartBtn) {
+        addToCartBtn.addEventListener('click', () => {
+          // In a real scenario, this would trigger adding the selected variant to the cart.
+          console.log('Add to cart clicked');
+        });
+      }
+    }
+  }
+
+  customElements.define('product-split-{{ ai_gen_id }}', ProductSplit{{ ai_gen_id }});
+})();
+</script>
+
+{% schema %}
+{
+  "name": "Product Split Layout",
+  "tag": null,
+  "settings": [
+    {
+      "type": "header",
+      "content": "Layout"
+    },
+    {
+      "type": "select",
+      "id": "image_aspect_ratio",
+      "label": "Image aspect ratio",
+      "options": [
+        {"value": "1", "label": "Square (1:1)"},
+        {"value": "4/3", "label": "Landscape (4:3)"},
+        {"value": "3/2", "label": "Classic (3:2)"},
+        {"value": "16/9", "label": "Widescreen (16:9)"},
+        {"value": "2/3", "label": "Portrait (2:3)"},
+        {"value": "3/4", "label": "Portrait (3:4)"},
+        {"value": "fullscreen", "label": "Full Screen"}
+      ],
+      "default": "1"
+    },
+    {
+      "type": "select",
+      "id": "content_alignment",
+      "label": "Content alignment",
+      "options": [
+        {"value": "left", "label": "Left"},
+        {"value": "center", "label": "Center"},
+        {"value": "right", "label": "Right"}
+      ],
+      "default": "left"
+    },
+    {
+      "type": "range",
+      "id": "content_padding",
+      "min": 0,
+      "max": 100,
+      "step": 5,
+      "unit": "px",
+      "label": "Content padding",
+      "default": 40
+    },
+    {
+      "type": "range",
+      "id": "element_spacing",
+      "min": 0,
+      "max": 50,
+      "step": 2,
+      "unit": "px",
+      "label": "Spacing between elements",
+      "default": 20
+    },
+    {
+      "type": "color",
+      "id": "content_background",
+      "label": "Content background color",
+      "default": "#ffffff"
+    },
+    {
+      "type": "header",
+      "content": "Product Title"
+    },
+    {
+      "type": "checkbox",
+      "id": "show_title",
+      "label": "Show title",
+      "default": true
+    },
+    {
+      "type": "font_picker",
+      "id": "title_font",
+      "label": "Title font",
+      "default": "helvetica_n4"
+    },
+    {
+      "type": "range",
+      "id": "title_size",
+      "min": 12,
+      "max": 60,
+      "step": 2,
+      "unit": "px",
+      "label": "Title size",
+      "default": 32
+    },
+    {
+      "type": "color",
+      "id": "title_color",
+      "label": "Title color",
+      "default": "#000000"
+    },
+    {
+      "type": "range",
+      "id": "title_margin",
+      "min": 0,
+      "max": 50,
+      "step": 2,
+      "unit": "px",
+      "label": "Title margin",
+      "default": 0
+    },
+    {
+      "type": "range",
+      "id": "title_padding",
+      "min": 0,
+      "max": 50,
+      "step": 2,
+      "unit": "px",
+      "label": "Title padding",
+      "default": 0
+    },
+    {
+      "type": "range",
+      "id": "title_border_width",
+      "min": 0,
+      "max": 10,
+      "step": 1,
+      "unit": "px",
+      "label": "Title border width",
+      "default": 0
+    },
+    {
+      "type": "color",
+      "id": "title_border_color",
+      "label": "Title border color",
+      "default": "#000000"
+    },
+    {
+      "type": "range",
+      "id": "title_border_radius",
+      "min": 0,
+      "max": 40,
+      "step": 2,
+      "unit": "px",
+      "label": "Title border radius",
+      "default": 0
+    },
+    {
+      "type": "header",
+      "content": "Price"
+    },
+    {
+      "type": "checkbox",
+      "id": "show_price",
+      "label": "Show price",
+      "default": true
+    },
+    {
+      "type": "font_picker",
+      "id": "price_font",
+      "label": "Price font",
+      "default": "helvetica_n4"
+    },
+    {
+      "type": "range",
+      "id": "price_size",
+      "min": 12,
+      "max": 40,
+      "step": 2,
+      "unit": "px",
+      "label": "Price size",
+      "default": 24
+    },
+    {
+      "type": "color",
+      "id": "price_color",
+      "label": "Price color",
+      "default": "#000000"
+    },
+    {
+      "type": "range",
+      "id": "price_margin",
+      "min": 0,
+      "max": 50,
+      "step": 2,
+      "unit": "px",
+      "label": "Price margin",
+      "default": 0
+    },
+    {
+      "type": "range",
+      "id": "price_padding",
+      "min": 0,
+      "max": 50,
+      "step": 2,
+      "unit": "px",
+      "label": "Price padding",
+      "default": 0
+    },
+    {
+      "type": "range",
+      "id": "price_border_width",
+      "min": 0,
+      "max": 10,
+      "step": 1,
+      "unit": "px",
+      "label": "Price border width",
+      "default": 0
+    },
+    {
+      "type": "color",
+      "id": "price_border_color",
+      "label": "Price border color",
+      "default": "#000000"
+    },
+    {
+      "type": "range",
+      "id": "price_border_radius",
+      "min": 0,
+      "max": 40,
+      "step": 2,
+      "unit": "px",
+      "label": "Price border radius",
+      "default": 0
+    },
+    {
+      "type": "header",
+      "content": "Description"
+    },
+    {
+      "type": "checkbox",
+      "id": "show_description",
+      "label": "Show description",
+      "default": true
+    },
+    {
+      "type": "font_picker",
+      "id": "description_font",
+      "label": "Description font",
+      "default": "helvetica_n4"
+    },
+    {
+      "type": "range",
+      "id": "description_size",
+      "min": 10,
+      "max": 24,
+      "step": 1,
+      "unit": "px",
+      "label": "Description size",
+      "default": 16
+    },
+    {
+      "type": "color",
+      "id": "description_color",
+      "label": "Description color",
+      "default": "#666666"
+    },
+    {
+      "type": "range",
+      "id": "description_margin",
+      "min": 0,
+      "max": 50,
+      "step": 2,
+      "unit": "px",
+      "label": "Description margin",
+      "default": 0
+    },
+    {
+      "type": "range",
+      "id": "description_padding",
+      "min": 0,
+      "max": 50,
+      "step": 2,
+      "unit": "px",
+      "label": "Description padding",
+      "default": 0
+    },
+    {
+      "type": "range",
+      "id": "description_border_width",
+      "min": 0,
+      "max": 10,
+      "step": 1,
+      "unit": "px",
+      "label": "Description border width",
+      "default": 0
+    },
+    {
+      "type": "color",
+      "id": "description_border_color",
+      "label": "Description border color",
+      "default": "#000000"
+    },
+    {
+      "type": "range",
+      "id": "description_border_radius",
+      "min": 0,
+      "max": 40,
+      "step": 2,
+      "unit": "px",
+      "label": "Description border radius",
+      "default": 0
+    },
+    {
+      "type": "header",
+      "content": "Color Variants"
+    },
+    {
+      "type": "checkbox",
+      "id": "show_color_variants",
+      "label": "Show color variants",
+      "default": true
+    },
+    {
+      "type": "select",
+      "id": "color_variant_style",
+      "label": "Color variant style",
+      "options": [
+        {"value": "dropdown", "label": "Dropdown"},
+        {"value": "pills", "label": "Pills"}
+      ],
+      "default": "pills"
+    },
+    {
+      "type": "font_picker",
+      "id": "variant_label_font",
+      "label": "Variant label font",
+      "default": "helvetica_n4"
+    },
+    {
+      "type": "range",
+      "id": "variant_label_size",
+      "min": 10,
+      "max": 24,
+      "step": 1,
+      "unit": "px",
+      "label": "Variant label size",
+      "default": 14
+    },
+    {
+      "type": "color",
+      "id": "variant_label_color",
+      "label": "Variant label color",
+      "default": "#000000"
+    },
+    {
+      "type": "font_picker",
+      "id": "color_variant_font",
+      "label": "Color variant font",
+      "default": "helvetica_n4"
+    },
+    {
+      "type": "range",
+      "id": "color_variant_size",
+      "min": 10,
+      "max": 24,
+      "step": 1,
+      "unit": "px",
+      "label": "Color variant size",
+      "default": 14
+    },
+    {
+      "type": "color",
+      "id": "color_variant_color",
+      "label": "Color variant color",
+      "default": "#000000"
+    },
+    {
+      "type": "color",
+      "id": "color_variant_background",
+      "label": "Color variant background",
+      "default": "#ffffff"
+    },
+    {
+      "type": "color",
+      "id": "color_variant_border_color",
+      "label": "Color variant border color",
+      "default": "#cccccc"
+    },
+    {
+      "type": "range",
+      "id": "color_variant_border_radius",
+      "min": 0,
+      "max": 40,
+      "step": 2,
+      "unit": "px",
+      "label": "Color variant border radius",
+      "default": 4
+    },
+    {
+      "type": "color",
+      "id": "color_variant_hover_color",
+      "label": "Color variant hover background",
+      "default": "#f0f0f0"
+    },
+    {
+      "type": "color",
+      "id": "color_variant_hover_text_color",
+      "label": "Color variant hover text color",
+      "default": "#000000"
+    },
+    {
+      "type": "color",
+      "id": "color_variant_selected_color",
+      "label": "Color variant selected background",
+      "default": "#000000"
+    },
+    {
+      "type": "color",
+      "id": "color_variant_selected_text_color",
+      "label": "Color variant selected text color",
+      "default": "#ffffff"
+    },
+    {
+      "type": "range",
+      "id": "color_variants_margin",
+      "min": 0,
+      "max": 50,
+      "step": 2,
+      "unit": "px",
+      "label": "Color variants margin",
+      "default": 0
+    },
+    {
+      "type": "range",
+      "id": "color_variants_padding",
+      "min": 0,
+      "max": 50,
+      "step": 2,
+      "unit": "px",
+      "label": "Color variants padding",
+      "default": 0
+    },
+    {
+      "type": "range",
+      "id": "color_variants_border_width",
+      "min": 0,
+      "max": 10,
+      "step": 1,
+      "unit": "px",
+      "label": "Color variants border width",
+      "default": 0
+    },
+    {
+      "type": "color",
+      "id": "color_variants_border_color",
+      "label": "Color variants border color",
+      "default": "#000000"
+    },
+    {
+      "type": "range",
+      "id": "color_variants_border_radius",
+      "min": 0,
+      "max": 40,
+      "step": 2,
+      "unit": "px",
+      "label": "Color variants border radius",
+      "default": 0
+    },
+    {
+      "type": "header",
+      "content": "Size Variants"
+    },
+    {
+      "type": "checkbox",
+      "id": "show_size_variants",
+      "label": "Show size variants",
+      "default": true
+    },
+    {
+      "type": "select",
+      "id": "size_variant_style",
+      "label": "Size variant style",
+      "options": [
+        {"value": "dropdown", "label": "Dropdown"},
+        {"value": "pills", "label": "Pills"}
+      ],
+      "default": "pills"
+    },
+    {
+      "type": "font_picker",
+      "id": "size_variant_font",
+      "label": "Size variant font",
+      "default": "helvetica_n4"
+    },
+    {
+      "type": "range",
+      "id": "size_variant_size",
+      "min": 10,
+      "max": 24,
+      "step": 1,
+      "unit": "px",
+      "label": "Size variant size",
+      "default": 14
+    },
+    {
+      "type": "color",
+      "id": "size_variant_color",
+      "label": "Size variant color",
+      "default": "#000000"
+    },
+    {
+      "type": "color",
+      "id": "size_variant_background",
+      "label": "Size variant background",
+      "default": "#ffffff"
+    },
+    {
+      "type": "color",
+      "id": "size_variant_border_color",
+      "label": "Size variant border color",
+      "default": "#cccccc"
+    },
+    {
+      "type": "range",
+      "id": "size_variant_border_radius",
+      "min": 0,
+      "max": 40,
+      "step": 2,
+      "unit": "px",
+      "label": "Size variant border radius",
+      "default": 4
+    },
+    {
+      "type": "color",
+      "id": "size_variant_hover_color",
+      "label": "Size variant hover background",
+      "default": "#f0f0f0"
+    },
+    {
+      "type": "color",
+      "id": "size_variant_hover_text_color",
+      "label": "Size variant hover text color",
+      "default": "#000000"
+    },
+    {
+      "type": "color",
+      "id": "size_variant_selected_color",
+      "label": "Size variant selected background",
+      "default": "#000000"
+    },
+    {
+      "type": "color",
+      "id": "size_variant_selected_text_color",
+      "label": "Size variant selected text color",
+      "default": "#ffffff"
+    },
+    {
+      "type": "range",
+      "id": "size_variants_margin",
+      "min": 0,
+      "max": 50,
+      "step": 2,
+      "unit": "px",
+      "label": "Size variants margin",
+      "default": 0
+    },
+    {
+      "type": "range",
+      "id": "size_variants_padding",
+      "min": 0,
+      "max": 50,
+      "step": 2,
+      "unit": "px",
+      "label": "Size variants padding",
+      "default": 0
+    },
+    {
+      "type": "range",
+      "id": "size_variants_border_width",
+      "min": 0,
+      "max": 10,
+      "step": 1,
+      "unit": "px",
+      "label": "Size variants border width",
+      "default": 0
+    },
+    {
+      "type": "color",
+      "id": "size_variants_border_color",
+      "label": "Size variants border color",
+      "default": "#000000"
+    },
+    {
+      "type": "range",
+      "id": "size_variants_border_radius",
+      "min": 0,
+      "max": 40,
+      "step": 2,
+      "unit": "px",
+      "label": "Size variants border radius",
+      "default": 0
+    },
+    {
+      "type": "header",
+      "content": "Quantity"
+    },
+    {
+      "type": "checkbox",
+      "id": "show_quantity",
+      "label": "Show quantity",
+      "default": true
+    },
+    {
+      "type": "font_picker",
+      "id": "quantity_label_font",
+      "label": "Quantity label font",
+      "default": "helvetica_n4"
+    },
+    {
+      "type": "range",
+      "id": "quantity_label_size",
+      "min": 10,
+      "max": 24,
+      "step": 1,
+      "unit": "px",
+      "label": "Quantity label size",
+      "default": 14
+    },
+    {
+      "type": "color",
+      "id": "quantity_label_color",
+      "label": "Quantity label color",
+      "default": "#000000"
+    },
+    {
+      "type": "font_picker",
+      "id": "quantity_font",
+      "label": "Quantity font",
+      "default": "helvetica_n4"
+    },
+    {
+      "type": "range",
+      "id": "quantity_size",
+      "min": 10,
+      "max": 24,
+      "step": 1,
+      "unit": "px",
+      "label": "Quantity size",
+      "default": 14
+    },
+    {
+      "type": "color",
+      "id": "quantity_color",
+      "label": "Quantity color",
+      "default": "#000000"
+    },
+    {
+      "type": "color",
+      "id": "quantity_background",
+      "label": "Quantity background",
+      "default": "#ffffff"
+    },
+    {
+      "type": "color",
+      "id": "quantity_button_hover_color",
+      "label": "Quantity button hover color",
+      "default": "#f0f0f0"
+    },
+    {
+      "type": "color",
+      "id": "quantity_input_border_color",
+      "label": "Quantity input border color",
+      "default": "#cccccc"
+    },
+    {
+      "type": "range",
+      "id": "quantity_input_border_radius",
+      "min": 0,
+      "max": 40,
+      "step": 2,
+      "unit": "px",
+      "label": "Quantity input border radius",
+      "default": 4
+    },
+    {
+      "type": "range",
+      "id": "quantity_margin",
+      "min": 0,
+      "max": 50,
+      "step": 2,
+      "unit": "px",
+      "label": "Quantity margin",
+      "default": 0
+    },
+    {
+      "type": "range",
+      "id": "quantity_padding",
+      "min": 0,
+      "max": 50,
+      "step": 2,
+      "unit": "px",
+      "label": "Quantity padding",
+      "default": 0
+    },
+    {
+      "type": "range",
+      "id": "quantity_border_width",
+      "min": 0,
+      "max": 10,
+      "step": 1,
+      "unit": "px",
+      "label": "Quantity border width",
+      "default": 0
+    },
+    {
+      "type": "color",
+      "id": "quantity_border_color",
+      "label": "Quantity border color",
+      "default": "#000000"
+    },
+    {
+      "type": "range",
+      "id": "quantity_border_radius",
+      "min": 0,
+      "max": 40,
+      "step": 2,
+      "unit": "px",
+      "label": "Quantity border radius",
+      "default": 0
+    },
+    {
+      "type": "header",
+      "content": "Add to Cart Button"
+    },
+    {
+      "type": "checkbox",
+      "id": "show_add_to_cart",
+      "label": "Show add to cart button",
+      "default": true
+    },
+    {
+      "type": "text",
+      "id": "button_text",
+      "label": "Button text",
+      "default": "Add to Cart"
+    },
+    {
+      "type": "checkbox",
+      "id": "button_full_width",
+      "label": "Full width button",
+      "default": true
+    },
+    {
+      "type": "font_picker",
+      "id": "button_font",
+      "label": "Button font",
+      "default": "helvetica_n4"
+    },
+    {
+      "type": "range",
+      "id": "button_size",
+      "min": 10,
+      "max": 24,
+      "step": 1,
+      "unit": "px",
+      "label": "Button text size",
+      "default": 16
+    },
+    {
+      "type": "range",
+      "id": "button_padding",
+      "min": 5,
+      "max": 30,
+      "step": 1,
+      "unit": "px",
+      "label": "Button padding",
+      "default": 15
+    },
+    {
+      "type": "color",
+      "id": "button_color",
+      "label": "Button background color",
+      "default": "#000000"
+    },
+    {
+      "type": "color",
+      "id": "button_text_color",
+      "label": "Button text color",
+      "default": "#ffffff"
+    },
+    {
+      "type": "color",
+      "id": "button_hover_color",
+      "label": "Button hover background color",
+      "default": "#333333"
+    },
+    {
+      "type": "color",
+      "id": "button_hover_text_color",
+      "label": "Button hover text color",
+      "default": "#ffffff"
+    },
+    {
+      "type": "range",
+      "id": "button_border_width",
+      "min": 0,
+      "max": 10,
+      "step": 1,
+      "unit": "px",
+      "label": "Button border width",
+      "default": 0
+    },
+    {
+      "type": "color",
+      "id": "button_border_color",
+      "label": "Button border color",
+      "default": "#000000"
+    },
+    {
+      "type": "range",
+      "id": "button_border_radius",
+      "min": 0,
+      "max": 40,
+      "step": 2,
+      "unit": "px",
+      "label": "Button border radius",
+      "default": 4
+    },
+    {
+      "type": "range",
+      "id": "button_margin",
+      "min": 0,
+      "max": 50,
+      "step": 2,
+      "unit": "px",
+      "label": "Button margin",
+      "default": 0
+    },
+    {
+      "type": "header",
+      "content": "Size Chart"
+    },
+    {
+      "type": "checkbox",
+      "id": "show_size_chart",
+      "label": "Show size chart",
+      "default": true
+    },
+    {
+      "type": "text",
+      "id": "size_chart_text",
+      "label": "Size chart text",
+      "default": "Size Chart"
+    },
+    {
+      "type": "url",
+      "id": "size_chart_url",
+      "label": "Size chart URL"
+    },
+    {
+      "type": "font_picker",
+      "id": "size_chart_font",
+      "label": "Size chart font",
+      "default": "helvetica_n4"
+    },
+    {
+      "type": "range",
+      "id": "size_chart_size",
+      "min": 10,
+      "max": 24,
+      "step": 1,
+      "unit": "px",
+      "label": "Size chart text size",
+      "default": 14
+    },
+    {
+      "type": "color",
+      "id": "size_chart_color",
+      "label": "Size chart color",
+      "default": "#000000"
+    },
+    {
+      "type": "color",
+      "id": "size_chart_hover_color",
+      "label": "Size chart hover color",
+      "default": "#666666"
+    },
+    {
+      "type": "range",
+      "id": "size_chart_margin",
+      "min": 0,
+      "max": 50,
+      "step": 2,
+      "unit": "px",
+      "label": "Size chart margin",
+      "default": 0
+    },
+    {
+      "type": "header",
+      "content": "Text Block"
+    },
+    {
+      "type": "checkbox",
+      "id": "show_text_block",
+      "label": "Show text block",
+      "default": true
+    },
+    {
+      "type": "richtext",
+      "id": "text_block_content",
+      "label": "Text block content",
+      "default": "<p>Additional product information or promotional text goes here.</p>"
+    },
+    {
+      "type": "font_picker",
+      "id": "text_block_font",
+      "label": "Text block font",
+      "default": "helvetica_n4"
+    },
+    {
+      "type": "range",
+      "id": "text_block_size",
+      "min": 10,
+      "max": 24,
+      "step": 1,
+      "unit": "px",
+      "label": "Text block size",
+      "default": 14
+    },
+    {
+      "type": "color",
+      "id": "text_block_color",
+      "label": "Text block color",
+      "default": "#666666"
+    },
+    {
+      "type": "color",
+      "id": "text_block_background",
+      "label": "Text block background",
+      "default": "transparent"
+    },
+    {
+      "type": "range",
+      "id": "text_block_margin",
+      "min": 0,
+      "max": 50,
+      "step": 2,
+      "unit": "px",
+      "label": "Text block margin",
+      "default": 0
+    },
+    {
+      "type": "range",
+      "id": "text_block_padding",
+      "min": 0,
+      "max": 50,
+      "step": 2,
+      "unit": "px",
+      "label": "Text block padding",
+      "default": 0
+    },
+    {
+      "type": "range",
+      "id": "text_block_border_width",
+      "min": 0,
+      "max": 10,
+      "step": 1,
+      "unit": "px",
+      "label": "Text block border width",
+      "default": 0
+    },
+    {
+      "type": "color",
+      "id": "text_block_border_color",
+      "label": "Text block border color",
+      "default": "#000000"
+    },
+    {
+      "type": "range",
+      "id": "text_block_border_radius",
+      "min": 0,
+      "max": 40,
+      "step": 2,
+      "unit": "px",
+      "label": "Text block border radius",
+      "default": 0
+    },
+    {
+      "type": "header",
+      "content": "Custom CSS"
+    },
+    {
+      "type": "textarea",
+      "id": "custom_css",
+      "label": "Custom CSS",
+      "info": "Add custom CSS styles here"
+    }
+  ],
+  "presets": [
+    {
+      "name": "Product Split Layout"
+    }
+  ]
+}
+{% endschema %}
